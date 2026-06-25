@@ -1,0 +1,30 @@
+## .NET / Visual Studio
+bin/
+obj/
+out/
+*.user
+*.suo
+.vs/
+.vscode/
+
+## Build results
+[Dd]ebug/
+[Rr]elease/
+artifacts/
+
+## Rider
+.idea/
+
+## Local config / secrets — do NOT commit real secrets
+appsettings.Local.json
+*.Development.local.json
+secrets.json
+
+## EF Core
+*.db
+*.db-shm
+*.db-wal
+
+## OS
+.DS_Store
+Thumbs.db
