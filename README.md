@@ -1,8 +1,22 @@
 # ServiceApp — Smart Service Marketplace API
 
+[![CI-CD](https://github.com/PaolaQuintanilla/marketplace-service-app/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/PaolaQuintanilla/marketplace-service-app/actions/workflows/ci-cd.yml)
+![.NET](https://img.shields.io/badge/.NET-10-512BD4)
+![Docker](https://img.shields.io/badge/Docker-ready-2496ED)
+![Azure](https://img.shields.io/badge/Azure-App%20Service-0078D4)
+
 A backend for a local-services marketplace (cleaning, plumbing, electrical, …) where
 **clients** book **providers** for a given **service**. Built with **.NET 10** and
-**Clean Architecture**.
+**Clean Architecture**, containerized with **Docker**, and continuously deployed to **Azure**
+via **GitHub Actions**.
+
+## 🚀 Live demo
+
+- **Swagger UI:** https://serviceapp-api-pq1.azurewebsites.net/swagger
+- **Health check:** https://serviceapp-api-pq1.azurewebsites.net/health
+
+> ⏳ Hosted on Azure's free tier — the **first request may take ~20s** while the app wakes from
+> sleep (cold start). Log in with the seeded admin below to try the protected endpoints.
 
 ## Architecture
 
@@ -21,6 +35,17 @@ Clean Architecture · Repository + Unit of Work · Service layer · Dependency I
 DTOs with AutoMapper · LINQ · JWT auth with role-based authorization · RFC 7807 ProblemDetails.
 
 ## Getting started
+
+### Option A — Docker (no local SQL Server needed)
+
+Requires **Docker Desktop**. Brings up the API **and** SQL Server with one command:
+
+```bash
+docker compose up --build
+```
+Then open `http://localhost:8080/swagger` (health at `http://localhost:8080/health`).
+
+### Option B — local .NET SDK
 
 Requires the **.NET 10 SDK** and **SQL Server LocalDB** (default) or any SQL Server.
 
@@ -70,6 +95,30 @@ dotnet user-secrets set "Jwt:SecretKey" "<a-long-random-secret>" --project Servi
 dotnet ef migrations add <Name> -p ServiceApp.Infrastructure -s ServiceApp.API -o Persistence/Migrations
 dotnet ef database update      -p ServiceApp.Infrastructure -s ServiceApp.API
 ```
+
+## Testing
+
+A dedicated **xUnit** test project (`ServiceApp.Tests`) covers the core logic and the HTTP API:
+
+- **Unit tests** (with **Moq**) for `AuthService`, `BookingService`, and password hashing.
+- **Integration / API tests** that boot the real API in-process with `WebApplicationFactory`
+  over an EF Core **in-memory** database — exercising routing, JWT auth, middleware, and the
+  full booking lifecycle end to end.
+
+```bash
+dotnet test
+```
+
+## Deployment & DevOps
+
+- **Docker** — multi-stage `Dockerfile` (SDK build → slim runtime image, non-root, port 8080)
+  and a `docker-compose.yml` for the full local stack (API + SQL Server).
+- **CI/CD** — GitHub Actions (`.github/workflows/ci-cd.yml`): build + test on every push/PR to
+  `main`, then build the image, push it to **GHCR**, and deploy to **Azure App Service** on `main`.
+- **Config & secrets** — injected as environment variables (the .NET `__` convention); no
+  secrets are committed to the repo.
+
+See [`DEPLOYMENT.md`](DEPLOYMENT.md) for the full Azure + GitHub Actions runbook.
 
 ## Roadmap (from the original plan)
 AI provider matching · background notification jobs · ratings aggregation · SignalR chat ·
