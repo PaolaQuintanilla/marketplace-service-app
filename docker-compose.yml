@@ -1,0 +1,35 @@
+# Local full-stack run:  docker compose up --build
+# API -> http://localhost:8080/swagger   health -> http://localhost:8080/health
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      # SQL Server password policy: >= 8 chars, 3 of 4 of upper/lower/digit/symbol.
+      MSSQL_SA_PASSWORD: "Your_strong_Pass123!"
+    ports:
+      - "1433:1433"
+    healthcheck:
+      # $$ escapes compose variable interpolation so the shell expands it at runtime
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q \"SELECT 1\" || exit 1"]
+      interval: 10s
+      retries: 10
+      start_period: 30s
+
+  api:
+    build:
+      context: .            # solution root, because the API references the other 3 projects
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Production"
+      # Host is the service name 'db'; TrustServerCertificate=True because mssql 2022 enforces TLS
+      ConnectionStrings__Default: "Server=db,1433;Database=ServiceAppDb;User Id=sa;Password=Your_strong_Pass123!;TrustServerCertificate=True;MultipleActiveResultSets=true"
+      Jwt__SecretKey: "local_dev_only_change_me_at_least_32_chars_long_0123456789"
+      Jwt__Issuer: "ServiceApp"
+      Jwt__Audience: "ServiceAppClients"
+      Jwt__ExpiryMinutes: "60"
+    depends_on:
+      db:
+        condition: service_healthy

@@ -1,0 +1,26 @@
+# Build artifacts
+**/bin/
+**/obj/
+
+# IDE / editor
+**/.vs/
+**/.vscode/
+*.user
+
+# VCS & CI (not needed in the image)
+.git/
+.gitignore
+.github/
+
+# Local secrets (never copy into the image)
+**/appsettings.Local.json
+**/secrets.json
+
+# Docker / docs / tooling files (irrelevant to the build)
+docker-compose*.yml
+Dockerfile
+.dockerignore
+README.md
+LEARNING_GUIDE.md
+DEPLOYMENT.md
+**/*.postman_collection.json

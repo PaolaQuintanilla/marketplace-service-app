@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -48,6 +49,9 @@ builder.Services
 
 builder.Services.AddAuthorization();
 
+// ---- Health checks (liveness probe for the cloud platform) ----
+builder.Services.AddHealthChecks();
+
 // ---- Swagger with JWT bearer support ----
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -79,13 +83,25 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await db.Database.MigrateAsync();
+    // SQL Server (relational) runs EF migrations; the in-memory provider used by integration
+    // tests isn't relational, so just materialize the schema graph instead.
+    if (db.Database.IsRelational())
+        await db.Database.MigrateAsync();
+    else
+        await db.Database.EnsureCreatedAsync();
     var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
     await DbSeeder.SeedAsync(db, hasher);
 }
 
 // ---- Pipeline ----
 app.UseMiddleware<ExceptionHandlingMiddleware>();
+
+// Behind a reverse proxy (Azure App Service terminates TLS), honor the original scheme/host
+// so UseHttpsRedirection sees the real https request and generated links are correct.
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
 
 app.UseSwagger();
 app.UseSwaggerUI();
@@ -95,4 +111,10 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
+// Anonymous liveness endpoint for load balancers / App Service health probes.
+app.MapHealthChecks("/health");
+
 app.Run();
+
+// Exposed so WebApplicationFactory<Program> can bootstrap the app in integration tests.
+public partial class Program { }

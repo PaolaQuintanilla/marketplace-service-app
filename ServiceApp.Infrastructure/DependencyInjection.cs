@@ -17,7 +17,10 @@ public static class DependencyInjection
         services.Configure<JwtSettings>(configuration.GetSection(JwtSettings.SectionName));
 
         services.AddDbContext<AppDbContext>(options =>
-            options.UseSqlServer(configuration.GetConnectionString("Default")));
+            options.UseSqlServer(
+                configuration.GetConnectionString("Default"),
+                // Retry transient failures (e.g. Azure SQL serverless resuming from auto-pause)
+                sql => sql.EnableRetryOnFailure()));
 
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IServiceRepository, ServiceRepository>();
